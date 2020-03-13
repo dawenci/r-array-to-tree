@@ -1,0 +1,34 @@
+{
+  "name": "r-array-to-tree",
+  "version": "0.0.1",
+  "description": "array to tree",
+  "module": "dist/esm/index.js",
+  "main": "dist/cjs/index.js",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -d --declarationDir types --module es2015 --target es5 --outDir dist/esm",
+    "build:cjs": "tsc --module commonjs --target es5 --outDir dist/cjs",
+    "test:unit": "jest",
+    "prepubish": "npm run test:unit && npm run build"
+  },
+  "files": [
+    "/dist",
+    "/types"
+  ],
+  "keywords": [
+    "tree"
+  ],
+  "author": "dawenci <hi@dawenci.me>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dawenci/r-array-to-tree.git"
+  },
+  "devDependencies": {
+    "@types/jest": "^25.1.4",
+    "jest": "^25.1.0",
+    "ts-jest": "^25.2.1",
+    "typescript": "^3.8.3"
+  }
+}
