@@ -1,24 +1,35 @@
-interface ToTreeOptions {
-  // 数据的 id 字段名称
+interface InternalOptions {
   idField: string
-  // 数据的父 id 字段名称
   parentIdField: string
-  // 挂载子结点的字段名称
   childrenField: string
-  // 指向父结点的字段名称
-  parentField?: string
-  // 是否将数据挂载到某个字段下（否则将会直接修改原始数据）
-  dataField?: string
-  // 没有父结点的结点，是否作为 root 结点
+  parentField: string
+  dataField: string
   orphansAsRoot: boolean
-  // 判断结点是否根节点
   isRoot: (item: any) => boolean
+  hasChild?: (parent: any) => boolean
+}
+
+interface Options {
+  // 数据的 id 字段名称
+  idField?: string
+  // 数据的父 id 字段名称
+  parentIdField?: string
+  // 挂载子结点的字段名称
+  childrenField?: string
+  // 指向父结点的字段名称
+  parentField?: string | boolean
+  // 是否将数据挂载到某个字段下（否则将会直接修改原始数据）
+  dataField?: string | boolean
+  // 没有父结点的结点，是否作为 root 结点
+  orphansAsRoot?: boolean
+  // 判断结点是否根节点
+  isRoot?: (item: any) => boolean
   // 判断结点是否存在子结点
-  hasChild: (parent: any) => boolean
+  hasChild?: (parent: any) => boolean
 }
 
 // 单次遍历结合缓存方式，生成树，适合大量数据时
-function onePass(array: Array<any>, options: ToTreeOptions) {
+function onePass(array: Array<any>, options: InternalOptions) {
   const { idField, parentIdField, childrenField, orphansAsRoot, dataField, isRoot, hasChild, parentField } = options
 
   // 根元素结点数组，最终的返回值
@@ -35,7 +46,7 @@ function onePass(array: Array<any>, options: ToTreeOptions) {
   for (let index = 0; index < count; index += 1) {
     const item = array[index]
     // 如果指定了包裹字段，则不直接修改原始数据，而是包裹起来
-    const entry: any = dataField ? { [dataField]: item } : item
+    const entry: any = dataField === '' ? item : { [dataField]: item }
 
     const itemId = item[idField]
     if (itemId == null) {
@@ -44,13 +55,13 @@ function onePass(array: Array<any>, options: ToTreeOptions) {
 
     // 1. 如果判定存在子结点，登记为父结点，以便子结点查找。
     // 2. 如果存在匹配当前结点的临时子列表，则将临时列表转正挂载 item 下。
-    if (!hasChild || hasChild!(item)) {
+    if (hasChild == null || hasChild!(item)) {
       parents[itemId] = entry
       if (tempLists[itemId]) {
         entry[childrenField] = tempLists[itemId]
 
         // 反向引用父元素
-        if (parentField) {
+        if (parentField !== '') {
           entry[childrenField].forEach((child: any) => {
             child[parentField] = entry
           })
@@ -84,7 +95,7 @@ function onePass(array: Array<any>, options: ToTreeOptions) {
       parent[childrenField].push(entry)
 
       // 反向引用父元素
-      if (parentField) {
+      if (parentField !== '') {
         entry[parentField] = parent
       }
 
@@ -114,37 +125,55 @@ function onePass(array: Array<any>, options: ToTreeOptions) {
 /**
  * 扁平的数组，转换成树形数据，单次遍历算法
  *
- * @param {Array<Object>} array 必选，原始扁平数据数组
- * @param {Object} [options] 可选，转换的配置项
+ * @export
+ * @param {Array<any>} array 必选，原始扁平数据数组
+ * @param {Options} [options={}] 可选，转换的配置项
  * @param {string} [options.idField] 可选，数据的 id，不传则为 id
  * @param {string} [options.parentIdField] 可选，数据的 parentId，不传则为 parentId
  * @param {string} [options.childrenField] 可选，存放子数据的字段名称，不传则为 children
- * @param {string} [options.parentField] 可选，子元素反向持有父元素的引用的字段名称，不传则不引用父结点
- * @param {string} [options.dataField] 可选，是否将数据挂载到某个字段下（否则将会直接修改原始数据）
+ * @param {string | boolean} [options.parentField] 可选，子元素反向持有父元素的引用的字段名称，不传则不引用父结点
+ * @param {string | boolean} [options.dataField] 可选，是否将数据挂载到某个字段下（否则将会直接修改原始数据）
  * @param {boolean} [options.orphansAsRoot] 可选，没有父结点的结点，是否作为 root 结点
- * @param {Object => boolean} [options.isRoot] 可选，判断是否为顶级结点的方法，默认检测父字段是否为 'TOP' | 'top'
- * @param {Object => boolean} [options.hasChild] 可选，辅助判断是否拥有子结点的方法，默认猜测所有节点都有子节点
+ * @param {any => boolean} [options.isRoot] 可选，判断是否为顶级结点的方法，默认检测父字段是否为 'TOP' | 'top'
+ * @param {any => boolean} [options.hasChild] 可选，辅助判断是否拥有子结点的方法，默认猜测所有节点都有子节点
+ * @returns {any[]}
  */
-export function arrayToTree(array?: Array<any>, options: Partial<ToTreeOptions> = {}) {
+export function arrayToTree(array?: Array<any>, options: Options = {}) {
   if (!array || !array.length) return []
 
+  // default: 'id'
   const idField = typeof options.idField === 'string' ? options.idField.trim() || 'id' : 'id'
 
+  // default: 'parentId'
   const parentIdField =
     typeof options.parentIdField === 'string' ? options.parentIdField.trim() || 'parentId' : 'parentId'
 
+  // default: 'children'
   const childrenField =
     typeof options.childrenField === 'string' ? options.childrenField.trim() || 'children' : 'children'
 
-  const parentField = typeof options.parentField === 'string' ? options.parentField.trim() || undefined : undefined
+  // default: ''
+  const parentField =
+    typeof options.parentField === 'string' ? options.parentField.trim() : !!options.parentField ? 'parent' : ''
 
-  const dataField = typeof options.dataField === 'string' ? options.dataField.trim() || undefined : 'data'
+  // default: 'data'
+  const dataField =
+    options.dataField == undefined
+      ? 'data'
+      : typeof options.dataField === 'string'
+      ? options.dataField.trim()
+      : !!options.dataField
+      ? 'data'
+      : ''
 
-  const orphansAsRoot = typeof options.orphansAsRoot === 'boolean' ? options.orphansAsRoot : false
+  // default: false
+  const orphansAsRoot = !!options.orphansAsRoot
 
+  // default: item => item[options.parentIdField] == null
   const isRoot = typeof options.isRoot === 'function' ? options.isRoot : (item: any) => item[parentIdField] == null
 
-  const hasChild = typeof options.hasChild === 'function' ? options.hasChild : () => true
+  // default: undefined
+  const hasChild = typeof options.hasChild === 'function' ? options.hasChild : undefined
 
   return onePass(array, {
     idField,

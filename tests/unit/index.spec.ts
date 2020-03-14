@@ -63,6 +63,7 @@ describe('arrayToTree', () => {
   it('options.parentField', () => {
     const item1 = { id: 1 }
     const item2 = { id: 2, parentId: 1 }
+
     const tree1 = arrayToTree([item1, item2], { parentField: 'parent' })
     expect(tree1[0]).toEqual(tree1[0].children[0].parent)
 
@@ -71,34 +72,47 @@ describe('arrayToTree', () => {
 
     const tree3 = arrayToTree([item1, item2], { parentField: '  ' })
     expect(tree3).toEqual([{ data: item1, children: [{ data: item2 }] }])
+
+    const tree4 = arrayToTree([item1, item2], { parentField: false })
+    expect(tree4).toEqual([{ data: item1, children: [{ data: item2 }] }])
+
+    const tree5 = arrayToTree([item1, item2], { parentField: true })
+    expect(tree5[0]).toEqual(tree1[0].children[0].parent)
   })
 
   it('options.dataField', () => {
     const item1 = { id: 1 }
     const item2 = { id: 2, parentId: 1 }
 
+    expect(arrayToTree([item1, item2], { dataField: true })).toEqual([{ data: item1, children: [{ data: item2 }] }])
+
+    expect(arrayToTree([{ ...item1 }, { ...item2 }], { dataField: false })).toEqual([{ ...item1, children: [item2] }])
+
     expect(arrayToTree([item1, item2], { dataField: 'value' })).toEqual([
       { value: item1, children: [{ value: item2 }] },
     ])
 
-    expect(arrayToTree([item1, item2], { dataField: ' ' })).toEqual([{ ...item1, children: [item2] }])
+    expect(arrayToTree([{ ...item1 }, { ...item2 }], { dataField: ' ' })).toEqual([{ ...item1, children: [item2] }])
   })
 
   it('options.orphansAsRoot', () => {
     const item1 = { id: 1 }
     const item2 = { id: 2, parentId: 3 }
-    const options = {
-      orphansAsRoot: true,
-    }
+    const options = { orphansAsRoot: true }
+
     const tree = arrayToTree([item1, item2], options)
     const expected = [{ data: item1 }, { data: item2 }]
     expect(tree).toEqual(expected)
 
+    const tree2 = arrayToTree([item1, item2], { orphansAsRoot: false })
+    const expected2 = [{ data: item1 }]
+    expect(tree2).toEqual(expected2)
+
     const item3 = { id: 1 }
     const item4 = { id: 2, parentId: 1 }
-    const tree2 = arrayToTree([item3, item4], { hasChild: () => false, orphansAsRoot: true })
-    const expected2 = [{ data: item3 }, { data: item4 }]
-    expect(tree2).toEqual(expected2)
+    const tree3 = arrayToTree([item3, item4], { hasChild: () => false, orphansAsRoot: true })
+    const expected3 = [{ data: item3 }, { data: item4 }]
+    expect(tree3).toEqual(expected3)
   })
 
   it('options.isRoot', () => {
